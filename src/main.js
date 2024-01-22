@@ -8,6 +8,9 @@ import "material-design-icons-iconfont/dist/material-design-icons.css";
 import "@fortawesome/fontawesome-free/css/all.css";
 
 Vue.config.productionTip = false;
+import TextareaAutosize from 'vue-textarea-autosize'
+ 
+Vue.use(TextareaAutosize)
 
 new Vue({
   router,

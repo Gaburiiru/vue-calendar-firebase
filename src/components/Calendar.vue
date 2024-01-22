@@ -111,13 +111,13 @@
               <v-btn icon @click="deleteEvent(selectedEvent)">
                 <v-icon>fa-solid fa-trash</v-icon>
               </v-btn>
-              <v-toolbar-title v-html="selectedEvent.name"></v-toolbar-title>
+              <v-toolbar-title>{{ selectedEvent.name }}</v-toolbar-title>
               <v-spacer></v-spacer>
             </v-toolbar>
 
             <v-card-text>
               <v-form v-if="currentlyEditing !== selectedEvent.id">
-                {{ selectedEvent.name }} - {{ selectedEvent.details }}
+                {{ selectedEvent.details }}
               </v-form>
 
               <v-form v-else>
@@ -128,17 +128,18 @@
                 >
                 </v-text-field>
 
-                <TextareaAutosize
+                <textarea-autosize
                   v-model="selectedEvent.details"
                   type="text"
                   style="width: 100%"
                   :min-height="100"
-                ></TextareaAutosize>
+                  class="white--text"
+                ></textarea-autosize>
               </v-form>
             </v-card-text>
 
             <v-card-actions>
-              <v-btn text class="red " @click="selectedOpen = false">
+              <v-btn text class="red" @click="selectedOpen = false">
                 Cancelar
               </v-btn>
               <v-btn
@@ -149,7 +150,11 @@
                 >Editar</v-btn
               >
 
-              <v-btn text  class="blue" v-else @click.prevent="updateEvent(selectedEvent)"
+              <v-btn
+                text
+                class="blue"
+                v-else
+                @click.prevent="updateEvent(selectedEvent)"
                 >Guardar Cambios</v-btn
               >
             </v-card-actions>
@@ -157,17 +162,24 @@
         </v-menu>
       </v-sheet>
     </v-col>
+    <v-snackbar
+      v-if="snackbar"
+      :value="progressValue"
+      absolute
+      shaped
+      bottom
+      color="red"
+      ><p class="white--text text-center my-0">
+        debe completar todos los campos
+      </p>
+    </v-snackbar>
   </v-row>
 </template>
 
 <script>
 import { db } from "@/firebase";
-import TextareaAutosize from "vue-textarea-autosize";
 
 export default {
-  components: {
-    TextareaAutosize,
-  },
   data: () => ({
     today: new Date().toISOString().substr(0, 10),
     focus: new Date().toISOString().substr(0, 10),
@@ -189,7 +201,23 @@ export default {
     color: "#1976D2",
     dialog: false,
     currentlyEditing: null,
+    snackbar: false,
+    progressBarDuration: 3000,
+    snackbar: false,
+    progressValue: 0,
+    progressBarInterval: null,
   }),
+  watch: {
+    snackbar(newVal) {
+      if (newVal) {
+        this.snackbar = true;
+        this.startProgressBar();
+      } else {
+        this.snackbar = false;
+        this.resetProgressBar();
+      }
+    },
+  },
   computed: {
     title() {
       const { start, end } = this;
@@ -233,6 +261,21 @@ export default {
     this.getEvents();
   },
   methods: {
+    startProgressBar() {
+      this.progressValue = 0;
+      const interval = 100;
+      const steps = this.progressBarDuration / interval;
+      this.progressBarInterval = setInterval(() => {
+        this.progressValue += 100 / steps;
+        if (this.progressValue >= 100) {
+          this.snackbar = false;
+          // Ocultar el Snackbar cuando la barra de progreso alcanza el 100%
+        }
+      }, interval);
+    },
+    resetProgressBar() {
+      clearInterval(this.progressBarInterval);
+    },
     async updateEvent(ev) {
       try {
         await db.collection("eventos").doc(ev.id).update({
@@ -260,7 +303,16 @@ export default {
     },
     async addEvent() {
       try {
-        if (this.name && this.start && this.end) {
+        // Verificar si start y end son fechas válidas
+        const isValidStartDate = Date.parse(this.start);
+        const isValidEndDate = Date.parse(this.end);
+
+        if (
+          this.name !== null &&
+          this.details !== null &&
+          isValidStartDate &&
+          isValidEndDate
+        ) {
           await db.collection("eventos").add({
             name: this.name,
             details: this.details,
@@ -277,12 +329,14 @@ export default {
           this.end = null;
           this.color = "#1976D2";
         } else {
-          console.log("Campos obligatorios");
+          console.log("Campos obligatorios o fechas inválidas");
+          this.snackbar = true;
         }
       } catch (error) {
         console.log(error);
       }
     },
+
     async getEvents() {
       try {
         const snapshot = await db.collection("eventos").get();

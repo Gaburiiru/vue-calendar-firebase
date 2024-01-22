@@ -1,5 +1,8 @@
 <template>
-  <calendar />
+  <v-container class="text-center white--text">
+    <h1 class="mb-5">Vue Calendar</h1>
+    <calendar />
+  </v-container>
 </template>
 
 <script>
@@ -7,7 +10,6 @@
 
   export default {
     name: 'Home',
-
     components: {
       calendar,
     },
